@@ -1,0 +1,110 @@
+apiVersion: apps.gitlab.com/v1beta1
+kind: GitLab
+metadata:
+  name: gitlab
+  namespace: gitlab-system
+spec:
+  chart:
+    values:
+      nginx-ingress:
+        enabled: false
+      certmanager:
+        install: false
+      postgresql:
+        install: false
+      redis:
+        install: false
+      minio:
+        install: false
+      global:
+        certificates:
+          customCAs:
+            - secret: lab-home-ca
+              keys:
+                - lab.home.ca.crt
+        image:
+          pullPolicy: Always
+          tagSuffix: -ubi8
+        minio:
+          enabled: false
+        registry:
+          bucket: registry
+        appConfig:
+          omniauth:
+            enabled: true
+            allowSingleSignOn: ['oauth2_generic']
+            blockAutoCreatedUsers: false
+            providers:
+            - secret: gitlab-oauth2-generic
+          lfs:
+            bucket: git-lfs
+            connection:
+              secret: my-s3-secret
+              key: connection
+          artifacts:
+            bucket: gitlab-artifacts
+            connection:
+              secret: my-s3-secret
+              key: connection
+          uploads:
+            bucket: gitlab-uploads
+            connection:
+              secret: my-s3-secret
+              key: connection
+          packages:
+            bucket: gitlab-packages
+            connection:
+              secret: my-s3-secret
+              key: connection
+          backups:
+            bucket: gitlab-backups
+            tmpBucket: tmp
+        gitaly:
+          internal:
+            names:
+            - default
+            - secondary
+            - tirtiary
+        hpa:
+          apiVersion: "autoscaling/v2"
+        hosts:
+          domain: apps.ocp4.lab.home
+        ingress:
+          configureCertmanager: false
+          class: none
+          annotations:
+            route.opemshift.io/termination: "edge"
+          tls:
+            secretName: ocp4-lab-home-wildcard-tls
+        psql:
+          # host: psql.example.com
+          # serviceName: pgbouncer
+          host: cd-gitlab-primary.gitlab-system.svc
+          #serviceName: cd-gitlab-primary.gitlab-system.svc 
+          port: 5432
+          database: cd-gitlab 
+          username: cd-gitlab 
+          password:
+            useSecret: true
+            secret: cd-gitlab-pguser-cd-gitlab 
+            key: password
+        redis:
+          host: gitlab-redis.gitlab-system.svc.cluster.local
+          #serviceName: gitlab-redis.gitlab-system.svc.cluster.local
+          port: 14914
+          auth:
+            enabled: true
+            secret: redis-secret
+            key: password
+      gitlab:
+        toolbox:
+          backups:
+            objectStorage:
+              config:
+                secret: storage-config
+                key: config
+      registry:
+        storage:
+          secret: registry-storage-config
+          key: connection
+    version: 7.2.4
